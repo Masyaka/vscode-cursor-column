@@ -7,9 +7,11 @@ Adds cursor position indication with column highlighting.
 Uses `editor.lineHighlightBackground` color as vertical line in cursor position.
 Improves cursor visibility, especially on big displays.
 
-\!\[Preview 1\]\(images/preview-1.png\)
-\!\[Preview 2\]\(images/preview-2.png\)
-\!\[Preview 3\]\(images/preview-3.png\)
+![Preview 1](images/preview-1.png)
+
+![Preview 2](images/preview-2.png)
+
+![Preview 3](images/preview-3.png)
 
 ## Extension Settings
 
