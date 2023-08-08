@@ -33,7 +33,7 @@
       "properties": {
         "cursor-column.disabled": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Disables cursor column highlight"
         }
       }
