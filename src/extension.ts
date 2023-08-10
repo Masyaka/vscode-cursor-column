@@ -1,31 +1,31 @@
 import * as vscode from "vscode";
 
-const { window, ColorThemeKind, Range, workspace } = vscode;
+const { window, Range, workspace } = vscode;
 
 let enabled = false;
 export async function activate(context: vscode.ExtensionContext) {
-  let decoration = await createDecoration(window.activeColorTheme.kind);
+  let decoration = update();
   const init = () => {
     updateEnabled({
       onEnabled: async() => {
-        decoration = await createDecoration(window.activeColorTheme.kind);
-        update(decoration);
+        decoration = update(decoration);
       },
       onDisabled: () => {
-        decoration.dispose();
+        decoration?.dispose();
       },
     });
   };
 
   window.onDidChangeTextEditorSelection((e) => {
-    const end = e.selections[0]?.end;
-    update(decoration, end);
+    decoration = update(decoration);
+  });
+
+  window.onDidChangeTextEditorVisibleRanges(() => {
+    decoration = update(decoration);
   });
 
   window.onDidChangeActiveColorTheme(async (e) => {
-    decoration.dispose();
-    decoration = await createDecoration(e.kind);
-    update(decoration);
+    decoration = update(decoration);
   });
 
   workspace.onDidChangeConfiguration((e) => {
@@ -54,92 +54,41 @@ const updateEnabled = (cbs: {
   }
 };
 
-function createPanel() {
-  return window.createWebviewPanel(
-    "theme-detector",
-    "",
-    {
-      preserveFocus: true,
-      viewColumn: vscode.ViewColumn.Beside,
-    },
-    {
-      enableScripts: true,
-      localResourceRoots: [],
-    }
-  );
-}
-
-const themeDetectorScript = `
-<html>
-  <body>
-    <script>
-    (function() {
-      const vscode = acquireVsCodeApi();
-      const color = getComputedStyle(document.documentElement).getPropertyValue('--vscode-cursorColumnColor');
-      vscode.postMessage(color);
-    })();
-    </script>
-  </body>
-</html>
-`;
-
-const getColor = () =>
-  new Promise((resolve) => {
-    let panel = createPanel();
-    const messageHandler = (color: any) => {
-      if (panel) {
-        panel.dispose();
-      }
-      resolve(color);
-    };
-
-    // After a second, just resolve as unknown.
-    setTimeout(() => messageHandler(null), 500);
-
-    panel.webview.onDidReceiveMessage(messageHandler, undefined, []);
-    panel.webview.html = themeDetectorScript;
-  });
-
-const getDefaultColor = (kind: vscode.ColorThemeKind) =>
-  [ColorThemeKind.Dark, ColorThemeKind.HighContrast].includes(kind)
-    ? "rgba(255, 255, 255, 0.04)"
-    : "rgba(0, 0, 0, 0.04)";
-
 const update = (
-  decoration: vscode.TextEditorDecorationType,
-  pos: vscode.Position | undefined = window.activeTextEditor?.selection.end
+  decoration: vscode.TextEditorDecorationType | undefined = undefined,
+  pos: vscode.Position | undefined = window.activeTextEditor?.selection.active
 ) => {
   const editor = window.activeTextEditor;
   if (!pos || !editor) {
-    return;
+    return decoration;
   }
-  editor.setDecorations(decoration, [
+  const newDecoration = createDecoration(pos.character);
+  const line = editor.visibleRanges[0]?.start.line;
+  editor.setDecorations(newDecoration, [
     {
-      range: new Range(
-        pos.with({ character: pos.character }),
-        pos.with({ character: pos.character + 1 })
-      ),
+      range: new Range(line, 0, line, 1),
     },
   ]);
+  decoration?.dispose();
+  return newDecoration;
 };
 
-const createDecoration = async (kind: vscode.ColorThemeKind) => {
-  const color = await getColor();
+const createDecoration = (char: number) => {
+  const color = new vscode.ThemeColor('cursorColumnColor');
   const decoration = window.createTextEditorDecorationType({
     overviewRulerLane: vscode.OverviewRulerLane.Right,
     before: {
       textDecoration: `
 				;box-sizing: content-box !important;
 				width: calc(1ch);
-				top: -50vh;
-				height: 100vh;
+        left: calc(${char}ch);
+				top: -10vh;
+				height: 120vh;
 				position: absolute;
 				z-index: -100;
         border: none;
-        background: linear-gradient(transparent, ${
-          color || getDefaultColor(kind)
-        }, transparent);
 			`,
+      backgroundColor: color,
       contentText: "",
       border: "1px solid",
     },
