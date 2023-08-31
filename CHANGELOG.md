@@ -6,4 +6,5 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- Initial release
+### 0.0.6
+Improved positioning with tabs, letters spacing, and non code insertions
