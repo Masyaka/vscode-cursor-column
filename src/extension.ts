@@ -75,8 +75,8 @@ const update = (
   if (!pos || !editor) {
     return decoration;
   }
-  const newDecoration = createDecoration(pos, editor, letterSpacing);
   decoration?.dispose();
+  const newDecoration = createDecoration(pos, editor, letterSpacing);
   return newDecoration;
 };
 
@@ -152,15 +152,16 @@ const createCursorBoundedDecoration = (
   const color = new vscode.ThemeColor("cursorColumnColor");
   const decoration = window.createTextEditorDecorationType({
     overviewRulerLane: vscode.OverviewRulerLane.Right,
-    before: {
+    after: {
       textDecoration: `
         ;box-sizing: content-box !important;
         width: calc(1ch);
-        top: -50vh;
-        height: 100vh;
+        top: -100vh;
+        height: 200vh;
         position: absolute;
         margin-left: -${letterSpacing}px
-        z-index: -100;
+        position: absolute;
+				z-index: -100;
         border: none;
 			`,
       backgroundColor: color,
@@ -172,7 +173,7 @@ const createCursorBoundedDecoration = (
   const char = position.character;
   editor.setDecorations(decoration, [
     {
-      range: new Range(line, char, line, char + 1),
+      range: new Range(line, char, line, char),
     },
   ]);
   return decoration;
