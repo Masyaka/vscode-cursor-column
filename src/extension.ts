@@ -3,38 +3,76 @@ import * as vscode from "vscode";
 const { window, Range, workspace } = vscode;
 
 let enabled = false;
+
+const throttle = (fn: () => void, ms: number) => {
+  let lastRun = Date.now();
+  let timeout: any;
+  return () => {
+    const now = Date.now();
+    if (lastRun + ms < now) {
+      clearTimeout(timeout);
+      timeout = null;
+      lastRun = now;
+      fn();
+    } else if (!timeout) {
+      timeout = setTimeout(fn, ms);
+    }
+  };
+};
+
 export async function activate(context: vscode.ExtensionContext) {
   let letterSpacing = 0;
-  let decoration = update(undefined, letterSpacing);
+  let wasVisible = cursorVisible();
+  const highlighting: CursorHighlighting = {
+    pos: new vscode.Position(0, 0),
+  };
+
+  const update = throttle(() => {
+    console.log('render');
+    const editor = window.activeTextEditor;
+    const pos = window.activeTextEditor?.selection.active;
+    if (!pos || !editor) {
+      return {
+        pos: new vscode.Position(0, 0),
+      };
+    }
+    wasVisible = cursorVisible();
+    highlighting.decoration?.dispose();
+    highlighting.decoration = createDecoration(pos, editor, letterSpacing);
+    highlighting.pos = pos;
+  }, 20);
+
   const init = () => {
     letterSpacing =
       workspace.getConfiguration("editor").get<number>("letterSpacing") || 0;
     updateEnabled({
       onEnabled: async () => {
-        decoration = update(decoration, letterSpacing);
+        update();
       },
       onDisabled: () => {
-        decoration?.dispose();
+        highlighting.decoration?.dispose();
       },
     });
   };
 
   window.onDidChangeTextEditorSelection((e) => {
-    decoration = update(decoration, letterSpacing);
+    if (cursorVisible()) {
+      update();
+    } else {
+      setTimeout(update, 30);
+    }
   });
 
-  let wasVisible = cursorVisible();
-  window.onDidChangeTextEditorVisibleRanges(() => {
+  window.onDidChangeTextEditorVisibleRanges((e) => {
     const nowVisible = cursorVisible();
     if (nowVisible && wasVisible) {
       return;
     }
-    decoration = update(decoration, letterSpacing);
-    wasVisible = nowVisible;
+    update();
   });
 
   window.onDidChangeActiveColorTheme(async (e) => {
-    decoration = update(decoration, letterSpacing);
+    update();
   });
 
   workspace.onDidChangeConfiguration((e) => {
@@ -66,18 +104,9 @@ const updateEnabled = (cbs: {
   }
 };
 
-const update = (
-  decoration: vscode.TextEditorDecorationType | undefined = undefined,
-  letterSpacing: number
-) => {
-  const editor = window.activeTextEditor;
-  const pos = window.activeTextEditor?.selection.active;
-  if (!pos || !editor) {
-    return decoration;
-  }
-  decoration?.dispose();
-  const newDecoration = createDecoration(pos, editor, letterSpacing);
-  return newDecoration;
+type CursorHighlighting = {
+  pos: vscode.Position;
+  decoration?: vscode.TextEditorDecorationType;
 };
 
 const cursorVisible = (
@@ -152,7 +181,7 @@ const createCursorBoundedDecoration = (
   const color = new vscode.ThemeColor("cursorColumnColor");
   const decoration = window.createTextEditorDecorationType({
     overviewRulerLane: vscode.OverviewRulerLane.Right,
-    after: {
+    before: {
       textDecoration: `
         ;box-sizing: content-box !important;
         width: calc(1ch);
