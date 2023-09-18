@@ -2,6 +2,7 @@
   "name": "cursor-column-highlight",
   "displayName": "Cursor column highlight",
   "description": "Highlights cursor position with vertical line",
+  "icon": "https://github.com/Masyaka/vscode-cursor-column/raw/main/images/icon.png",
   "author": "Masyaka",
   "publisher": "IuriiBarlukov",
   "repository": {
