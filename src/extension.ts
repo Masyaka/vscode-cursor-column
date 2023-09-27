@@ -22,13 +22,13 @@ const throttle = (fn: () => void, ms: number) => {
 
 export async function activate(context: vscode.ExtensionContext) {
   let letterSpacing = 0;
+  let showBorder = false;
   let wasVisible = cursorVisible();
   const highlighting: CursorHighlighting = {
     pos: new vscode.Position(0, 0),
   };
 
   const update = throttle(() => {
-    console.log('render');
     const editor = window.activeTextEditor;
     const pos = window.activeTextEditor?.selection.active;
     if (!pos || !editor) {
@@ -38,13 +38,21 @@ export async function activate(context: vscode.ExtensionContext) {
     }
     wasVisible = cursorVisible();
     highlighting.decoration?.dispose();
-    highlighting.decoration = createDecoration(pos, editor, letterSpacing);
+    highlighting.decoration = createDecoration(
+      pos,
+      editor,
+      letterSpacing,
+      showBorder
+    );
     highlighting.pos = pos;
   }, 20);
 
   const init = () => {
     letterSpacing =
       workspace.getConfiguration("editor").get<number>("letterSpacing") || 0;
+    showBorder =
+      workspace.getConfiguration("cursor-column").get<boolean>("showBorder") ||
+      false;
     updateEnabled({
       onEnabled: async () => {
         update();
@@ -78,6 +86,7 @@ export async function activate(context: vscode.ExtensionContext) {
   workspace.onDidChangeConfiguration((e) => {
     if (
       e.affectsConfiguration("cursor-column.disabled") ||
+      e.affectsConfiguration("cursor-column.showBorder") ||
       e.affectsConfiguration("editor.letterSpacing")
     ) {
       init();
@@ -123,20 +132,33 @@ const cursorVisible = (
 const createDecoration = (
   position: vscode.Position,
   editor: vscode.TextEditor,
-  letterSpacing: number
+  letterSpacing: number,
+  showBorder: boolean
 ) => {
   if (cursorVisible(position, editor)) {
-    return createCursorBoundedDecoration(position, editor, letterSpacing);
+    return createCursorBoundedDecoration(
+      position,
+      editor,
+      letterSpacing,
+      showBorder
+    );
   }
-  return createIndependentDecoration(position, editor, letterSpacing);
+  return createIndependentDecoration(
+    position,
+    editor,
+    letterSpacing,
+    showBorder
+  );
 };
 
 const createIndependentDecoration = (
   position: vscode.Position,
   editor: vscode.TextEditor,
-  letterSpacing: number
+  letterSpacing: number,
+  showBorder: boolean
 ) => {
   const color = new vscode.ThemeColor("cursorColumnColor");
+  const borderColor = new vscode.ThemeColor("cursorColumnBorderColor");
   const preCursorSymbols = editor.document
     .lineAt(position.line)
     .text.substring(0, position.character);
@@ -157,11 +179,11 @@ const createIndependentDecoration = (
 				height: 120vh;
 				position: absolute;
 				z-index: -100;
-        border: none;
 			`,
       backgroundColor: color,
       contentText: "",
       border: "1px solid",
+      borderColor: showBorder ? borderColor : "transparent",
     },
   });
   const line = editor.visibleRanges[0]?.start.line;
@@ -176,9 +198,11 @@ const createIndependentDecoration = (
 const createCursorBoundedDecoration = (
   position: vscode.Position,
   editor: vscode.TextEditor,
-  letterSpacing: number
+  letterSpacing: number,
+  showBorder: boolean
 ) => {
   const color = new vscode.ThemeColor("cursorColumnColor");
+  const borderColor = new vscode.ThemeColor("cursorColumnBorderColor");
   const decoration = window.createTextEditorDecorationType({
     overviewRulerLane: vscode.OverviewRulerLane.Right,
     before: {
@@ -191,11 +215,11 @@ const createCursorBoundedDecoration = (
         margin-left: -${letterSpacing}px
         position: absolute;
 				z-index: -100;
-        border: none;
 			`,
+      border: "1px solid",
       backgroundColor: color,
       contentText: "",
-      border: "1px solid",
+      borderColor: showBorder ? borderColor : "transparent",
     },
   });
   const line = position.line;

@@ -8,7 +8,7 @@
   "repository": {
     "url": "https://github.com/Masyaka/vscode-cursor-column"
   },
-  "version": "1.0.1",
+  "version": "1.1.0",
   "engines": {
     "vscode": "^1.81.0"
   },
@@ -28,6 +28,14 @@
           "light": "editor.lineHighlightBackground"
         },
         "description": "Color of cursor column highlight"
+      },
+      {
+        "id": "cursorColumnBorderColor",
+        "defaults": {
+          "dark": "editor.lineHighlightBorder",
+          "light": "editor.lineHighlightBorder"
+        },
+        "description": "Color of cursor column border highlight"
       }
     ],
     "configuration": {
@@ -36,6 +44,11 @@
           "type": "boolean",
           "default": false,
           "description": "Disables cursor column highlight"
+        },
+        "cursor-column.showBorder": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show column highlight border"
         }
       }
     }
