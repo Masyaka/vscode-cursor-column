@@ -172,13 +172,14 @@ const createIndependentDecoration = (
     overviewRulerLane: vscode.OverviewRulerLane.Right,
     before: {
       textDecoration: `
-				;box-sizing: content-box !important;
+				box-sizing: content-box !important;
 				width: calc(1ch);
-        left: calc(${cursorChar}ch + ${letterSpacingOffset}px);
+        margin-left: calc(${cursorChar}ch + ${letterSpacingOffset}px);
 				top: -10vh;
 				height: 120vh;
 				position: absolute;
-				z-index: -100;
+				z-index: -999;
+        pointer-events: none;
 			`,
       backgroundColor: color,
       contentText: "",
@@ -203,18 +204,26 @@ const createCursorBoundedDecoration = (
 ) => {
   const color = new vscode.ThemeColor("cursorColumnColor");
   const borderColor = new vscode.ThemeColor("cursorColumnBorderColor");
+  const preCursorSymbols = editor.document
+    .lineAt(position.line)
+    .text.substring(0, position.character);
+  const tabsCount = preCursorSymbols.split("\t").length - 1;
+  const cursorChar =
+    preCursorSymbols.length -
+    tabsCount +
+    tabsCount * +(editor.options.tabSize || 2);
+  const letterSpacingOffset = preCursorSymbols.length * (letterSpacing || 0);
   const decoration = window.createTextEditorDecorationType({
     overviewRulerLane: vscode.OverviewRulerLane.Right,
     before: {
       textDecoration: `
-        ;box-sizing: content-box !important;
+        box-sizing: content-box !important;
         width: calc(1ch);
-        top: -100vh;
-        height: 200vh;
+        left: calc(${cursorChar}ch + ${letterSpacingOffset}px);
+        height: 100%;
         position: absolute;
-        margin-left: -${letterSpacing}px
-        position: absolute;
-				z-index: -100;
+        z-index: -100;
+        pointer-events: none;
 			`,
       border: "1px solid",
       backgroundColor: color,
@@ -222,12 +231,15 @@ const createCursorBoundedDecoration = (
       borderColor: showBorder ? borderColor : "transparent",
     },
   });
-  const line = position.line;
-  const char = position.character;
-  editor.setDecorations(decoration, [
-    {
-      range: new Range(line, char, line, char),
-    },
-  ]);
+  const visibleRanges = editor.visibleRanges;
+  const ranges: vscode.Range[] = [];
+  for (const range of visibleRanges) {
+    for (let line = range.start.line; line <= range.end.line; line++) {
+      const lineText = editor.document.lineAt(line).text;
+      const endChar = Math.min(position.character, lineText.length);
+      ranges.push(new Range(line, 0, line, Math.max(1, endChar)));
+    }
+  }
+  editor.setDecorations(decoration, ranges);
   return decoration;
 };
